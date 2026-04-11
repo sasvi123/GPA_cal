@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UoP Engineering GPA Calculator</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --danger: #ef4444;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); display: flex; justify-content: center; padding: 20px; }
+        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        h2 { text-align: center; color: var(--primary); margin-bottom: 1.5rem; margin-top: 0; }
+        .form-group { margin-bottom: 1rem; }
+        label { display: block; margin-bottom: 0.4rem; font-weight: 600; font-size: 0.85rem; }
+        select, input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; background-color: white; box-sizing: border-box; }
+        
+        /* Stats Grid for Current GPA */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f1f5f9; padding: 15px; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #e2e8f0; }
+
+        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn-add { background-color: var(--primary); color: white; }
+        .btn-add:hover { background-color: #1d4ed8; }
+        .btn-reset { background: #e2e8f0; color: var(--text); }
+        .btn-reset:hover { background: #cbd5e1; }
+        
+        #course-list { margin-top: 2rem; }
+        .course-item { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 10px; margin-bottom: 8px; border-radius: 6px; border: 1px solid #e2e8f0; border-left: 4px solid var(--primary); font-size: 0.8rem; }
+        .delete-btn { color: var(--danger); cursor: pointer; font-weight: bold; padding: 0 5px; }
+
+        .result-area { text-align: center; margin-top: 20px; padding: 15px; background: #eff6ff; border: 2px dashed var(--primary); border-radius: 12px; }
+        #gpa-result { font-size: 2.2rem; font-weight: bold; margin: 5px 0; color: var(--primary); }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>GPA Calculator</h2>
+
+    <label style="margin-bottom: 8px; color: #64748b;">Current Standing</label>
+    <div class="stats-grid">
+        <div class="form-group">
+            <label>Current GPA</label>
+            <input type="number" id="current-gpa" step="0.01" placeholder="0.00" oninput="calculateFinalGPA()">
+        </div>
+        <div class="form-group">
+            <label>Total Credits</label>
+            <input type="number" id="current-total-credits" placeholder="0" oninput="calculateFinalGPA()">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label>Department:</label>
+        <select id="Department" onchange="updateSubjects()">
+            <option value="">-- Select Department --</option>
+            <option value="Computer Engineering">Computer Engineering</option>
+            <option value="Electrical and Electronics Engineering">Electrical and Electronics Engineering</option>
+            <option value="Mechanical Engineering">Mechanical Engineering</option>
+            <option value="Manufacturing Engineering">Manufacturing Engineering</option>
+            <option value="Civil Engineering">Civil Engineering</option>
+            <option value="Chemical and Process Engineering">Chemical and Process Engineering</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Select Subject</label>
+        <select id="subject-select" onchange="autoFillCredits()">
+            <option value="">-- Select Dept First --</option>
+        </select>
+    </div>
+
+    <div style="display: flex; gap: 10px;">
+        <div class="form-group" style="flex: 1;">
+            <label>Credits</label>
+            <input type="number" id="credit-input" readonly placeholder="0">
+        </div>
+        <div class="form-group" style="flex: 1;">
+            <label>Grade</label>
+            <select id="grade-select">
+                <option value="4.0">A/A+</option>
+                <option value="3.7">A-</option>
+                <option value="3.3">B+</option>
+                <option value="3.0">B</option>
+                <option value="2.7">B-</option>
+                <option value="2.3">C+</option>
+                <option value="2.0">C</option>
+                <option value="1.7">C-</option>
+                <option value="1.3">D+</option>
+                <option value="1.0">D</option>
+                <option value="0.0">E</option>
+            </select>
+        </div>
+    </div> 
+
+    <div class="btn-group">
+        <button class="btn-add" onclick="addCourse()">Add Course</button>
+        <button class="btn-reset" onclick="resetCalculator()">Reset All</button>
+    </div>
+
+    <div id="course-list"></div>
+
+    <div class="result-area">
+        <h3 style="margin:0; font-size: 0.9rem; color: #64748b;">NEW CUMULATIVE GPA</h3>
+        <p id="gpa-result">0.00</p>
+    </div>
+</div>
+
+<script>
+    const universityData = {
+        "Computer Engineering": [
+            { name: "CO2020 - Computer Networking", credits: 3 },
+            { name: "CO2030 - Data Structures and Algorithms II", credits: 3 },
+            { name: "CO2040 - Software Design and Development", credits: 2 },
+            { name: "EM2020 - Probability and Statistics", credits: 2 },
+            { name: "EM2060 - Numerical Methods", credits: 3 },
+            { name: "CO2010 - Digital Circuits Design", credits: 4 },
+            { name: "CO2060 - Software Systems Design Project", credits: 2 }
+        ],
+        "Electrical and Electronics Engineering": [
+            { name: "EE2010 - Circuit Analysis", credits: 3 },
+            { name: "EE2020 - Signal and Systems", credits: 3 },
+            { name: "EE2030 - Digital Logic Design", credits: 3 },
+            { name: "EE2040 - Analog Electronics", credits: 3 },
+            { name: "EE2050 - Design principles and Manufacturing T ", credits: 3 },
+            { name: "EE3070 - Computational Methods", credits: 3 }
+        ],
+        "Mechanical Engineering": [
+            { name: "EM2010 - Calculus II", credits: 2 },
+            { name: "EM2020 - Probability and Statistics", credits: 2 },
+            { name: "ME2010 - Engineering Innovation and Design", credits: 3 },
+            { name: "ME2020 - Mechanics of Machines", credits: 3 },
+            { name: "CE2080 - Mechanics of Materials", credits: 3 },
+            { name: "CE2020 - Fluid Mechanics I", credits: 3 },
+            { name: "EE2800 - Introduction to Electrical Engineering", credits: 3 }
+        ],
+        "Manufacturing Engineering": [
+            { name: "MI2010 - Manufacturing Processes I", credits: 3 },
+            { name: "ME2800 - Computer-Aided Drafting", credits: 3 },
+            { name: "CE2080 - Mechanics of Materials", credits: 3 },
+            { name: "EE2800 - Introduction to Electrical Engineering", credits: 3 },
+            { name: "MI2050 - Product Innovation", credits: 3 },
+            { name: "EM2020 - Probability and Statistics", credits: 2 },
+            { name: "ME2020 - Mechanics of Machines", credits: 3 }
+        ],
+        "Civil Engineering": [
+            { name: "EM2010 - Calculus II", credits: 2 },
+            { name: "EM2020 - Probability and Statistics", credits: 2 },
+            { name: "CE2010 - Structural Analysis I", credits: 2 },
+            { name: "CE2020 - Fluid Mechanics I", credits: 3 },
+            { name: "CE2040 - Soil Mechanics", credits: 3 },
+            { name: "CE2050 - Land Surveying Techniques", credits: 1 },
+            { name: "EE2810 - Essential Electrical Engineering", credits: 2 },
+            { name: "ME2810 - Mechanical Engineering for civil", credits: 2 }
+        ],
+        "Chemical and Process Engineering": [
+            { name: "CP2010 - Chemical Engineering Fundamentals", credits: 3 },
+            { name: "CE2080 - Mechanics of Materials", credits: 3 },
+            { name: "CE2020 - Fluid Mechanics I", credits: 3 },
+            { name: "EE2800 - Introduction to Electrical Engineering", credits: 3 },
+            { name: "CP2020 - Chemistry for Engineers", credits: 3 },
+            { name: "EM2010 - Calculus II", credits: 2 },
+            { name: "EM2020 - Probability and Statistics", credits: 2 }
+        ]
+    };
+
+    let addedCourses = [];
+
+    function updateSubjects() {
+        const dept = document.getElementById('Department').value;
+        const subSelect = document.getElementById('subject-select');
+        subSelect.innerHTML = '<option value="">-- Choose Subject --</option>';
+        document.getElementById('credit-input').value = "";
+        
+        if(dept && universityData[dept]) {
+            universityData[dept].forEach((course, index) => {
+                let opt = document.createElement('option');
+                opt.value = index;
+                opt.textContent = course.name;
+                subSelect.appendChild(opt);
+            });
+        }
+    }
+
+    function autoFillCredits() {
+        const dept = document.getElementById('Department').value;
+        const subIndex = document.getElementById('subject-select').value;
+        if(dept && subIndex !== "") {
+            document.getElementById('credit-input').value = universityData[dept][subIndex].credits;
+        }
+    }
+
+    function addCourse() {
+        const dept = document.getElementById('Department').value;
+        const subIndex = document.getElementById('subject-select').value;
+        const gradeValue = parseFloat(document.getElementById('grade-select').value);
+        
+        if(!dept || subIndex === "") return alert("Please select a subject!");
+
+        const course = universityData[dept][subIndex];
+        addedCourses.push({ name: course.name, credits: course.credits, grade: gradeValue });
+
+        renderUI();
+        calculateFinalGPA();
+    }
+
+    function removeCourse(index) {
+        addedCourses.splice(index, 1);
+        renderUI();
+        calculateFinalGPA();
+    }
+
+    function renderUI() {
+        const list = document.getElementById('course-list');
+        list.innerHTML = '';
+        addedCourses.forEach((c, index) => {
+            const item = document.createElement('div');
+            item.className = 'course-item';
+            item.innerHTML = `
+                <span><b>${c.name}</b> (${c.credits} Cr)</span> 
+                <span>GP: ${c.grade} <span class="delete-btn" onclick="removeCourse(${index})">×</span></span>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    function calculateFinalGPA() {
+        const curGPA = parseFloat(document.getElementById('current-gpa').value) || 0;
+        const curCredits = parseFloat(document.getElementById('current-total-credits').value) || 0;
+
+        let totalPoints = curGPA * curCredits;
+        let totalCredits = curCredits;
+
+        addedCourses.forEach(c => {
+            totalPoints += (c.credits * c.grade);
+            totalCredits += c.credits;
+        });
+
+        const finalGPA = totalCredits > 0 ? (totalPoints / totalCredits).toFixed(2) : "0.00";
+        document.getElementById('gpa-result').innerText = finalGPA;
+    }
+
+    function resetCalculator() {
+        if(confirm("Clear everything?")) {
+            addedCourses = [];
+            document.getElementById('current-gpa').value = '';
+            document.getElementById('current-total-credits').value = '';
+            document.getElementById('Department').value = '';
+            updateSubjects();
+            renderUI();
+            calculateFinalGPA();
+        }
+    }
+</script>
+</body>
+</html>
